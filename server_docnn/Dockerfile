@@ -55,6 +55,14 @@ RUN curl https://download.pytorch.org/libtorch/cpu/libtorch-cxx11-abi-shared-wit
     && unzip libtorch.zip \
     && rm libtorch.zip
 
+# Install JSON library
+WORKDIR /
+RUN git clone https://github.com/nlohmann/json.git
+WORKDIR /json/build
+RUN cmake -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=Release .. \
+    && make \
+    && make install
+
 # Copy local files to /app
 COPY . /app
 WORKDIR /app
