@@ -73,8 +73,7 @@ def setup_app(app: Flask, args: object):
     def get_predictions():
         query = get_key_from_data(request.args, 'query')
         payload = {'text': str(query)}
-        payload = urllib.parse.urlencode(payload, quote_via=urllib.parse.quote)
-        r = requests.get(args.modelserver, params=payload)
+        r = requests.post(args.modelserver, json=payload)
         response = json.loads(r.text)
         intent_scores = response['intent_ranking']
 

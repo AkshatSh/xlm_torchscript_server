@@ -211,23 +211,48 @@ class RestProxyHandler : public Http::Handler {
   }
 
   void onRequest(const Http::Request& request, Http::ResponseWriter response) {
-    const string docParam = "text";
     if (!mTransport->isOpen()) {
       mTransport->open();
     }
 
-    if (request.query().has(docParam)) {
-      string doc = urlDecode(request.query().get(docParam).get());
-      map<string, double> scores;
-      mPredictorClient->predict(scores, doc);
-      response.send(Http::Code::Ok, mResponseFormatter->format(scores, doc));
-    }
-    else {
+     auto headers = request.headers();
+
+    shared_ptr<Http::Header::ContentType> contentType;
+    try {
+      contentType = headers.get<Http::Header::ContentType>();
+    } catch (runtime_error) {
       response.send(Http::Code::Bad_Request,
-                    "Missing query parameter: " + docParam + "\n");
+                    "Expected HTTP header Content-Type: application/json\n");
+      return;
     }
+
+    auto mediaType = contentType->mime();
+    if (mediaType != MIME(Application, Json)) {
+      response.send(Http::Code::Bad_Request,
+                    "Expected HTTP header Content-Type: application/json, found " + mediaType.toString() + "\n");
+      return;
+    }
+    const json requestBody = json::parse(request.body());
+    string text;
+
+    try {
+      text = requestBody.at(mTextParam);
+    } catch (json::out_of_range) {
+      response.send(Http::Code::Bad_Request,
+                    "Missing json parameter: " + mTextParam + "\n");
+      return;
+    }
+
+    map<string, double> scores;
+    mPredictorClient->predict(scores, text);
+    response.send(Http::Code::Ok, mResponseFormatter->format(scores, text));
+    
   }
+
+  static const string mTextParam;
 };
+
+const string RestProxyHandler::mTextParam = "text";
 
 int main(int argc, char **argv) {
   // Parse command line args
