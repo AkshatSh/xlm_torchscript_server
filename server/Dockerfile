@@ -71,6 +71,14 @@ RUN cmake .. \
 # WORKDIR /sentencepiece
 # RUN ./test.sh native build_linux_gcc_ubuntu
 
+# Install JSON library
+WORKDIR /
+RUN git clone https://github.com/nlohmann/json.git
+WORKDIR /json/build
+RUN cmake -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=Release .. \
+    && make \
+    && make install
+
 # Copy local files to /app
 COPY . /app
 WORKDIR /app

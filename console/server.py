@@ -1,4 +1,4 @@
-from typing import Tuple
+from typing import Tuple, Any, Dict
 
 import flask
 from flask import (
@@ -8,7 +8,6 @@ from flask import (
     abort,
     Blueprint,
 )
-from math import exp
 from flask_restful import Api
 from flask_cors import CORS
 import requests
@@ -18,6 +17,7 @@ import logging
 import argparse
 import urllib
 import csv
+import json
 
 
 def get_args() -> argparse.ArgumentParser:
@@ -72,22 +72,20 @@ def setup_app(app: Flask, args: object):
     @app.route('/api/coronavirus_model/', methods=['GET'])
     def get_predictions():
         query = get_key_from_data(request.args, 'query')
-        payload = {'doc': str(query)}
+        payload = {'text': str(query)}
         payload = urllib.parse.urlencode(payload, quote_via=urllib.parse.quote)
         r = requests.get(args.modelserver, params=payload)
-        intent_scores = r.text.split("\n")
+        response = json.loads(r.text)
+        intent_scores = response['intent_ranking']
 
         intent_scores = list(filter(lambda inp: inp, intent_scores))
 
-        def convert_score_string(score_string: str) -> Tuple[str, float]:
-            components = score_string.split(":")
-            # [in:, name of intent, score of intent]
-            # full intent name is the first two
-            intent_name = ":".join(components[:2])
-            intent_score = (float(components[2]))
+        def convert_to_tuple(intent_score: Dict[str, Any]) -> Tuple[str, float]:
+            intent_name = intent_score['name']
+            intent_score = intent_score['confidence']
             return intent_name, intent_score
 
-        intent_scores = list(map(convert_score_string, intent_scores))
+        intent_scores = list(map(convert_to_tuple, intent_scores))
         intent_scores = sorted(intent_scores, reverse=True, key=lambda tup: tup[1])
         return jsonify({
             "query": query,
