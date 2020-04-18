@@ -8,6 +8,7 @@
 #include <thread>
 #include <vector>
 #include <math.h> 
+#include <csignal>
 
 #include <thrift/protocol/TBinaryProtocol.h>
 #include <thrift/server/TSimpleServer.h>
@@ -43,6 +44,19 @@ using namespace predictor_service;
 
 using namespace Pistache;
 using json = nlohmann::json;
+
+// Server objects need to be global so that the handler can kill them cleanly
+unique_ptr<TSimpleServer> thriftServer;
+unique_ptr<Http::Endpoint> restServer;
+void shutdownHandler(int s) {
+  if (thriftServer) {
+    thriftServer->stop();
+  }
+  if (restServer) {
+    restServer->shutdown();
+  }
+  exit(0);
+}
 
 // Main handler for the predictor service
 class PredictorHandler : virtual public PredictorIf {
@@ -263,6 +277,13 @@ int main(int argc, char **argv) {
   }
 
   gflags::ParseCommandLineFlags(&argc, &argv, true);
+  // Handle shutdown events
+  struct sigaction sigIntHandler;
+  sigIntHandler.sa_handler = shutdownHandler;
+  sigemptyset(&sigIntHandler.sa_mask);
+  sigIntHandler.sa_flags = 0;
+  sigaction(SIGINT, &sigIntHandler, NULL);
+
   string modelFile = argv[1];
   string sentencepiece_vocab = argv[2];
 
@@ -273,9 +294,9 @@ int main(int argc, char **argv) {
   shared_ptr<TTransportFactory> transportFactory(
       new TBufferedTransportFactory());
   shared_ptr<TProtocolFactory> protocolFactory(new TBinaryProtocolFactory());
-  TSimpleServer thriftServer(
+  thriftServer = make_unique<TSimpleServer>(
       processor, serverTransport, transportFactory, protocolFactory);
-  thread thriftThread([&](){ thriftServer.serve(); });
+  thread thriftThread([&](){ thriftServer->serve(); });
   cout << "Server running. Thrift port: " << FLAGS_port_thrift;
 
   if (FLAGS_rest) {
@@ -288,11 +309,11 @@ int main(int argc, char **argv) {
     // Initialize REST proxy
     Address addr(Ipv4::any(), Port(FLAGS_port_rest));
     auto opts = Http::Endpoint::options().threads(1);
-    Http::Endpoint restServer(addr);
-    restServer.init(opts);
-    restServer.setHandler(
+    restServer = make_unique<Http::Endpoint>(addr);
+    restServer->init(opts);
+    restServer->setHandler(
         make_shared<RestProxyHandler>(transport, predictorClient));
-    thread restThread([&](){ restServer.serve(); });
+    thread restThread([&](){ restServer->serve(); });
 
     cout << ", REST port: " << FLAGS_port_rest << endl;
     restThread.join();
