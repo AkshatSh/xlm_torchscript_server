@@ -22,6 +22,7 @@ RUN apt-get update && apt-get install -y \
     libboost-filesystem-dev \
     libboost-thread-dev \
     libevent-dev \
+    libgoogle-glog-dev \
     automake \
     libtool \
     flex \

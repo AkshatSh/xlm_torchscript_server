@@ -17,13 +17,11 @@
 #include "gen-cpp/Predictor.h"
 
 #include "pistache/endpoint.h"
-
 #include <nlohmann/json.hpp>
-
 #include <curl/curl.h>
-
 #include <torch/script.h>
 
+#include <glog/logging.h>
 #include <gflags/gflags.h>
 DEFINE_int32(
     port_thrift,
@@ -48,9 +46,11 @@ unique_ptr<TSimpleServer> thriftServer;
 unique_ptr<Http::Endpoint> restServer;
 void shutdownHandler(int s) {
   if (thriftServer) {
+    LOG(INFO) << "Shutting down Thrift server";
     thriftServer->stop();
   }
   if (restServer) {
+    LOG(INFO) << "Shutting down REST proxy server";
     restServer->shutdown();
   }
   exit(0);
@@ -95,10 +95,19 @@ class PredictorHandler : virtual public PredictorIf {
   }
 
   void predict(map<string, double>& _return, const string& doc) {
+    LOG(INFO) << "Processing \"" << doc << "\"";
     // Pre-process: tokenize input doc
     vector<string> tokens;
     string docCopy = doc;
     tokenize(tokens, docCopy);
+
+    if (VLOG_IS_ON(1)) {
+      stringstream ss;
+      ss << "[";
+      copy(tokens.begin(), tokens.end(), ostream_iterator<string>(ss, ", "));
+      ss.seekp(-1, ss.cur); ss << "]";
+      VLOG(1) << "Tokens for \"" << doc << "\": " << ss.str();
+    }
 
     // Prepare input for the model as a batch
     vector<vector<string>> batch{tokens};
@@ -116,6 +125,7 @@ class PredictorHandler : virtual public PredictorIf {
     for (const auto& elem : output) {
       _return.insert({elem.key().toStringRef(), elem.value().toDouble()});
     }
+    VLOG(1) << "Logits for \"" << doc << "\": " << _return;
   }
 };
 
@@ -143,6 +153,7 @@ class ResponseFormatter {
 
     // Sort in descending order
     vector<pair<string, double>> sortedScores = sortMapByValue(normScores);
+    VLOG(1) << "Normalized scores for \"" << text << "\": " << normScores;
 
     // Reformat into name / confidence pairs. Strip "intent:" prefix
     json ir = json::array();
@@ -161,6 +172,7 @@ class ResponseFormatter {
     }
     j[mEntities] = json::array();
 
+    LOG(INFO) << "Processed \"" << text << "\", predicted " << (j[mIntent] != nullptr ? j[mIntent].dump() : "no intents");
     return j.dump(2 /*indentation*/);
   }
 
@@ -284,7 +296,9 @@ int main(int argc, char **argv) {
     return 1;
   }
 
+  google::InitGoogleLogging(argv[0]);
   gflags::ParseCommandLineFlags(&argc, &argv, true);
+  FLAGS_logtostderr = 1;
   string modelFile = argv[1];
 
   // Handle shutdown events
@@ -304,7 +318,7 @@ int main(int argc, char **argv) {
   thriftServer = make_unique<TSimpleServer>(
       processor, serverTransport, transportFactory, protocolFactory);
   thread thriftThread([&]() { thriftServer->serve(); });
-  cout << "Server running. Thrift port: " << FLAGS_port_thrift;
+  LOG(INFO) << "Thrift server running at port: " << FLAGS_port_thrift;
 
   if (FLAGS_rest) {
     // Initialize Thrift client used to foward requests from REST
@@ -322,11 +336,10 @@ int main(int argc, char **argv) {
         make_shared<RestProxyHandler>(transport, predictorClient));
     thread restThread([&]() { restServer->serve(); });
 
-    cout << ", REST port: " << FLAGS_port_rest << endl;
+    LOG(INFO) << "REST proxy server running at port: " << FLAGS_port_rest;
     restThread.join();
   }
 
-  cout << endl;
   thriftThread.join();
   return 0;
 }
