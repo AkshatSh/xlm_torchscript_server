@@ -6,7 +6,7 @@ CPPFLAGS += -g -std=c++11 -std=c++14 \
 	-Wno-deprecated-declarations
 CLIENT_LDFLAGS += -lthrift
 SERVER_LDFLAGS += -L/libtorch/lib \
-	-lthrift -lpistache -lpthread -ltorch -lc10 -lcurl -lgflags
+	-lthrift -lpistache -lpthread -ltorch -lc10 -lcurl -lgflags -lglog
 
 server: server.o gen-cpp/Predictor.o
 	g++ $^ $(SERVER_LDFLAGS) -o $@
