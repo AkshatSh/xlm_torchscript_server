@@ -1,7 +1,13 @@
+For monolingual,
 ```
 $ mkdir build && cd build
-$ echo -e 'FROM pytext/xlm_predictor_service_torchscript:latest\nCOPY xlm_model.pt.torchscript /app\nCOPY sentencepiece.bpe.model /app\nCMD ["./server","xlm_model.pt.torchscript", "sentencepiece.bpe.model"]' >> Dockerfile
+$ # Copy the downloaded models into this directory
+$ echo -e 'FROM pytext/predictor_service_torchscript:who\nCOPY *.torchscript /app/\nCMD ["./server","mono.model.pt.torchscript"]' >> Dockerfile
 $ docker build -t server .
 $ docker run -it -p 8080:8080 server
-$ curl -G "http://localhost:8080" --data-urlencode "doc=what is"
+$ curl -d '{"text": "hi"}' -H 'Content-Type: application/json' localhost:8080
+```
+For multilingual,
+```
+echo -e 'FROM pytext/predictor_service_torchscript:who\nCOPY *.torchscript /app/\nCMD ["./server","multi.model.pt.torchscript", "multi.vocab.model.pt.torchscript"]' >> Dockerfile
 ```
