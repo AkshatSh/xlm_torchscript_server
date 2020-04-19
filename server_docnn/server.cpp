@@ -30,6 +30,7 @@ DEFINE_int32(
     "Port which the Thrift server should listen on");
 DEFINE_bool(rest, true, "Set up a REST proxy to the Thrift server");
 DEFINE_int32(port_rest, 8080, "Port which the REST proxy should listen on");
+DEFINE_bool(run_tests, true, "Run tests before starting the server");
 
 using namespace std;
 
@@ -65,7 +66,6 @@ class PredictorHandler : virtual public PredictorIf {
   vector<vector<string>> mDummyVecVec;
 
   void tokenize(vector<string>& tokens, string& doc) {
-    transform(doc.begin(), doc.end(), doc.begin(), ::tolower);
     size_t start = 0;
     size_t end = 0;
     for (size_t i = 0; i < doc.length(); i++) {
@@ -95,7 +95,6 @@ class PredictorHandler : virtual public PredictorIf {
   }
 
   void predict(map<string, double>& _return, const string& doc) {
-    LOG(INFO) << "Processing \"" << doc << "\"";
     // Pre-process: tokenize input doc
     vector<string> tokens;
     string docCopy = doc;
@@ -157,6 +156,10 @@ class RestProxyHandler : public Http::Handler {
     ) {
     mTransport = transport;
     mPredictorClient = predictorClient;
+
+    if (FLAGS_run_tests) {
+      mFormatter->runTests();
+    }
   }
 
   void onRequest(const Http::Request& request, Http::ResponseWriter response) {

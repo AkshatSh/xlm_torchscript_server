@@ -1,5 +1,8 @@
 
+#include <cassert>
+#include <set>
 #include <string>
+#include <vector>
 #include <nlohmann/json.hpp>
 #include <glog/logging.h>
 
@@ -14,11 +17,18 @@ class Formatter {
     string text;
     try {
       text = jsonRequest.at(mTextParam);
+      LOG(INFO) << "Requested processing of \"" << text << "\"";
     } catch (json::out_of_range e) {
       throw out_of_range(e.what());
     }
-    
-    return text;
+
+    string normalizedText = text;
+    transform(text.begin(), text.end(), normalizedText.begin(), ::tolower);
+    normalizedText = stripPrefixChars(normalizedText, mPrefixCharsToStrip);
+    normalizedText = stripSuffixChars(normalizedText, mSuffixCharsToStrip);
+    VLOG(1) << "Normalized \"" << text << "\" into \"" << normalizedText << "\"";
+
+    return normalizedText;
   }
 
   string formatResponse(const map<string, double>& scores, const string& text) {
@@ -47,7 +57,7 @@ class Formatter {
     // Reformat into name / confidence pairs. Strip "intent:" prefix
     json ir = json::array();
     for (const auto& p : sortedScores) {
-      ir.push_back({{mName, stripPrefix(p.first, mIntentPrefix)},
+      ir.push_back({{mName, stripPrefixWord(p.first, mIntentPrefix)},
                     {mConfidence, p.second}});
     }
 
@@ -65,15 +75,6 @@ class Formatter {
     return j.dump(2 /*indentation*/);
   }
 
-  static const string mTextParam;
-  static const string mName;
-  static const string mConfidence;
-  static const string mIntentPrefix;
-  static const string mText;
-  static const string mIntentRanking;
-  static const string mIntent;
-  static const string mEntities;
-
   template <typename A, typename B>
   vector<pair<A, B>> sortMapByValue(const map<A, B>& src) {
     vector<pair<A, B>> v{make_move_iterator(begin(src)),
@@ -85,15 +86,97 @@ class Formatter {
     return v;
   }
 
-  string stripPrefix(const string& doc, const string& prefix) {
-    if (doc.length() >= prefix.length()) {
-      auto res = std::mismatch(prefix.begin(), prefix.end(), doc.begin());
+  string stripPrefixWord(const string& text, const string& prefix) {
+    if (text.length() >= prefix.length()) {
+      auto res = std::mismatch(prefix.begin(), prefix.end(), text.begin());
       if (res.first == prefix.end()) {
-        return doc.substr(prefix.length());
+        return text.substr(prefix.length());
       }
     }
-    return doc;
+    return text;
   }
+
+  string stripPrefixChars(const string& text, const set<char>& prefixes) {
+    int textLength = text.length();  // cast to int to avoid unsigned size_t underflow on subtraction from 0
+    int startIdx = 0;
+    while (startIdx < textLength) {
+      if (prefixes.find(text.at(startIdx)) == prefixes.end()) { // character is not in prefixes set
+        break;
+      }
+      startIdx++;
+    }
+    return text.substr(startIdx);
+  }
+
+  string stripSuffixWord(const string& text, const string& suffix) {
+    if (text.length() >= suffix.length()) {
+      if (0 == text.compare(text.length() - suffix.length(), suffix.length(), suffix)) {
+        return text.substr(0, text.length() - suffix.length());
+      }
+    }
+    return text;
+  }
+
+  string stripSuffixChars(const string& text, const set<char>& suffixes) {
+    int endIdx = text.length();  // cast to int to avoid unsigned size_t underflow on subtraction from 0
+    while (endIdx > 0) {
+      if (suffixes.find(text.at(endIdx - 1)) == suffixes.end()) { // character is not in suffixes set
+        break;
+      }
+      endIdx--;
+    }
+    return text.substr(0, endIdx);
+  }
+
+  void runTests() {
+    assert(stripPrefixWord("foo:bar", "") == "foo:bar");
+    assert(stripPrefixWord("foo:bar", "foo:") == "bar");
+    assert(stripPrefixWord("foo:bar", "food") == "foo:bar");
+    assert(stripPrefixWord("foo:", "foo:bar") == "foo:");
+    assert(stripPrefixWord("", "foo:") == "");
+
+    assert(stripPrefixChars("foo bar", {' ', '?'}) == "foo bar");
+    assert(stripPrefixChars("?foo bar", {' ', '?'}) == "foo bar");
+    assert(stripPrefixChars("??  foo bar", {' ', '?'}) == "foo bar");
+    assert(stripPrefixChars("?! ?foo bar", {' ', '?', '!'}) == "foo bar");
+    assert(stripPrefixChars(" !?!?!  ", {' ', '?', '!'}) == "");
+    assert(stripPrefixChars("", {' ', '?', '!'}) == "");
+
+    assert(stripSuffixWord("foo:bar", "") == "foo:bar");
+    assert(stripSuffixWord("foo:bar", "bar") == "foo:");
+    assert(stripSuffixWord("foo:bar", "bars") == "foo:bar");
+    assert(stripSuffixWord("foo:", "foo:bar") == "foo:");
+    assert(stripSuffixWord("", "bar") == "");
+
+    assert(stripSuffixChars("foo bar", {' ', '?'}) == "foo bar");
+    assert(stripSuffixChars("foo bar?", {' ', '?'}) == "foo bar");
+    assert(stripSuffixChars("foo bar  ??", {' ', '?'}) == "foo bar");
+    assert(stripSuffixChars("foo bar? !? ", {' ', '?', '!'}) == "foo bar");
+    assert(stripSuffixChars(" !?!?!  ", {' ', '?', '!'}) == "");
+    assert(stripSuffixChars("", {' ', '?', '!'}) == "");
+
+    // Composite
+    assert (
+      stripSuffixChars(
+        stripPrefixChars(" what is foo.?!?? ", mPrefixCharsToStrip), 
+        mSuffixCharsToStrip
+      ) == "what is foo"
+    );
+
+    LOG(INFO) << "All formatter tests passed";
+  }
+
+  static const string mTextParam;
+  static const string mName;
+  static const string mConfidence;
+  static const string mIntentPrefix;
+  static const string mText;
+  static const string mIntentRanking;
+  static const string mIntent;
+  static const string mEntities;
+
+  static const set<char> mPrefixCharsToStrip;
+  static const set<char> mSuffixCharsToStrip;
 };
 
 const string Formatter::mTextParam = "text";
@@ -104,3 +187,6 @@ const string Formatter::mText = "text";
 const string Formatter::mIntentRanking = "intent_ranking";
 const string Formatter::mIntent = "intent";
 const string Formatter::mEntities = "entities";
+
+const set<char> Formatter::mPrefixCharsToStrip = {' '};
+const set<char> Formatter::mSuffixCharsToStrip = {' ', '?', '.', '!'};
