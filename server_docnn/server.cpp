@@ -17,9 +17,10 @@
 #include "gen-cpp/Predictor.h"
 
 #include "pistache/endpoint.h"
-#include <nlohmann/json.hpp>
 #include <curl/curl.h>
 #include <torch/script.h>
+
+#include "formatter.hpp"
 
 #include <glog/logging.h>
 #include <gflags/gflags.h>
@@ -39,7 +40,6 @@ using namespace apache::thrift::server;
 using namespace predictor_service;
 
 using namespace Pistache;
-using json = nlohmann::json;
 
 // Server objects need to be global so that the handler can kill them cleanly
 unique_ptr<TSimpleServer> thriftServer;
@@ -129,97 +129,12 @@ class PredictorHandler : virtual public PredictorIf {
   }
 };
 
-// Response Formatting for a specific API
-class ResponseFormatter {
- public:
-  static string format(const map<string, double>& scores, const string& text) {
-    // Exponentiate
-    map<string, double> expScores;
-    transform(scores.begin(), scores.end(), inserter(expScores, expScores.begin()),
-              [](const auto& p) {
-                return make_pair(p.first, exp(p.second));
-              });
-
-    // Sum up
-    double sum = accumulate(begin(expScores), end(expScores), 0.,
-                            [](double previous, const auto& p) { return previous + p.second; });
-
-    // Normalize (end up with softmax)
-    map<string, double> normScores;
-    transform(expScores.begin(), expScores.end(), inserter(normScores, normScores.begin()),
-              [sum](const auto& p) {
-                return make_pair(p.first, p.second / sum);
-              });
-
-    // Sort in descending order
-    vector<pair<string, double>> sortedScores = sortMapByValue(normScores);
-    VLOG(1) << "Normalized scores for \"" << text << "\": " << normScores;
-
-    // Reformat into name / confidence pairs. Strip "intent:" prefix
-    json ir = json::array();
-    for (const auto& p : sortedScores) {
-      ir.push_back({{mName, stripPrefix(p.first, mIntentPrefix)},
-                    {mConfidence, p.second}});
-    }
-
-    json j;
-    j[mText] = text;
-    j[mIntentRanking] = ir;
-    if (!ir.empty()) {
-      j[mIntent] = ir.at(0);
-    } else {
-      j[mIntent] = nullptr;
-    }
-    j[mEntities] = json::array();
-
-    LOG(INFO) << "Processed \"" << text << "\", predicted " << (j[mIntent] != nullptr ? j[mIntent].dump() : "no intents");
-    return j.dump(2 /*indentation*/);
-  }
-
-  static const string mName;
-  static const string mConfidence;
-  static const string mIntentPrefix;
-  static const string mText;
-  static const string mIntentRanking;
-  static const string mIntent;
-  static const string mEntities;
-
-  template <typename A, typename B>
-  static vector<pair<A, B>> sortMapByValue(const map<A, B>& src) {
-    vector<pair<A, B>> v{make_move_iterator(begin(src)),
-                         make_move_iterator(end(src))};
-
-    sort(begin(v), end(v),
-         [](auto lhs, auto rhs) { return lhs.second > rhs.second; });  // descending order
-
-    return v;
-  }
-
-  static string stripPrefix(const string& doc, const string& prefix) {
-    if (doc.length() >= prefix.length()) {
-      auto res = std::mismatch(prefix.begin(), prefix.end(), doc.begin());
-      if (res.first == prefix.end()) {
-        return doc.substr(prefix.length());
-      }
-    }
-    return doc;
-  }
-};
-
-const string ResponseFormatter::mName = "name";
-const string ResponseFormatter::mConfidence = "confidence";
-const string ResponseFormatter::mIntentPrefix = "intent:";
-const string ResponseFormatter::mText = "text";
-const string ResponseFormatter::mIntentRanking = "intent_ranking";
-const string ResponseFormatter::mIntent = "intent";
-const string ResponseFormatter::mEntities = "entities";
-
 // REST proxy for the predictor Thrift service (not covered in tutorial)
 class RestProxyHandler : public Http::Handler {
  private:
   shared_ptr<TTransport> mTransport;
   shared_ptr<PredictorClient> mPredictorClient;
-  shared_ptr<ResponseFormatter> mResponseFormatter;
+  shared_ptr<Formatter> mFormatter;
 
   string urlDecode(const string &encoded)
   {
@@ -267,26 +182,20 @@ class RestProxyHandler : public Http::Handler {
       return;
     }
 
-    const json requestBody = json::parse(request.body());
     string text;
-
     try {
-      text = requestBody.at(mTextParam);
-    } catch (json::out_of_range) {
+      text = mFormatter->formatRequest(request.body());
+    } catch (out_of_range e) {
       response.send(Http::Code::Bad_Request,
-                    "Missing json parameter: " + mTextParam + "\n");
+                    string("Exception: ") + e.what() + "\n");
       return;
     }
 
     map<string, double> scores;
     mPredictorClient->predict(scores, text);
-    response.send(Http::Code::Ok, mResponseFormatter->format(scores, text));
+    response.send(Http::Code::Ok, mFormatter->formatResponse(scores, text));
   }
-
-  static const string mTextParam;
 };
-
-const string RestProxyHandler::mTextParam = "text";
 
 int main(int argc, char **argv) {
   // Parse command line args
