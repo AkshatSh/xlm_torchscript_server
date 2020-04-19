@@ -1,12 +1,12 @@
 # Custom 
 test/
 server/data/
+server/server
 console/env/
 .devcontainer/
 *model.pt
 *model.pt.torchscript
 */gen-cpp/
-server_docnn/server
 
 # C++
 
