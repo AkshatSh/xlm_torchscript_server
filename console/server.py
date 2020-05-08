@@ -34,7 +34,7 @@ def get_args() -> argparse.ArgumentParser:
 
     parser.add_argument(
         "--console_address",
-        default="http://localhost:5000",
+        default=" http://0.0.0.0:5000/",
         help="the location of the console server",
     )
     return parser
