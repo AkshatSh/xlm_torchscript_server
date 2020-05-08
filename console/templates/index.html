@@ -35,8 +35,7 @@
         </style>
 
         <script>
-            var PYTHON_SERVER_ADDRESS = "http://0.0.0.0:5000/";
-            // var PYTHON_SERVER_ADDRESS = "http://34.71.16.212:8000/";
+            var PYTHON_SERVER_ADDRESS = "{{ console_address }}";
             $(document).ready(function () {
                 function makeScoreString(raw_scores) {
                     return raw_scores[0] + ": " + (raw_scores[1] * 100).toFixed(2) + "%";
@@ -117,7 +116,7 @@
                     submit_data_button.setAttribute("class", "button");
                     submit_data_button.onclick = function () {
                         var data_point = document.querySelector('input[name="choice"]:checked').value;
-                        $.get(PYTHON_SERVER_ADDRESS + "api/add_coronavirus_data/?data_point=" + encodeURI(data_point), function (data) {
+                        $.get(PYTHON_SERVER_ADDRESS + "api/add_data/?data_point=" + encodeURI(data_point), function (data) {
                         // Display the returned data in browser
                         var success_message = "The data point (query=" + data.query + ", label=" + data.label + ") has been added, thank you for your help!";
 
@@ -135,7 +134,7 @@
                 // Add the contents of options[0] to #foo:
                 $("#submit_button").click(function () {
                     var query_box_val = $("#query").val();
-                    $.get(PYTHON_SERVER_ADDRESS + "api/coronavirus_model/?query=" + encodeURI(query_box_val), function (data) {
+                    $.get(PYTHON_SERVER_ADDRESS + "api/model/?query=" + encodeURI(query_box_val), function (data) {
                         // Display the returned data in browser
                         $("#best_prediction").text(makeScoreString(data.prediction));
 
