@@ -2,7 +2,6 @@
 
     <head>
         <title>WHO BOT Console</title>
-        <script src="http://ajax.googleapis.com/ajax/libs/jquery/2.0.2/jquery.min.js"></script>
 
         <style>
             .button {
@@ -36,7 +35,7 @@
 
         <script>
             var PYTHON_SERVER_ADDRESS = "{{ console_address }}";
-            $(document).ready(function () {
+            window.onload = function () {
                 function makeScoreString(raw_scores) {
                     return raw_scores[0] + ": " + (raw_scores[1] * 100).toFixed(2) + "%";
                 }
@@ -65,7 +64,7 @@
                         var choiceSelection = document.createElement('input')
                         choiceSelection.setAttribute('type', 'radio');
                         choiceSelection.setAttribute('name', 'choice');
-                        choiceSelection.setAttribute('value', query+","+intent_name);
+                        choiceSelection.setAttribute('value', query + "," + intent_name);
                         choiceSelection.setAttribute('id', "choice_" + intent_name);
 
                         var choiceLabel = document.createElement('label')
@@ -116,12 +115,23 @@
                     submit_data_button.setAttribute("class", "button");
                     submit_data_button.onclick = function () {
                         var data_point = document.querySelector('input[name="choice"]:checked').value;
-                        $.get(PYTHON_SERVER_ADDRESS + "api/add_data/?data_point=" + encodeURI(data_point), function (data) {
-                        // Display the returned data in browser
-                        var success_message = "The data point (query=" + data.query + ", label=" + data.label + ") has been added, thank you for your help!";
+                        var xhr = new XMLHttpRequest();
+                        console.log(data_point);
+                        xhr.onreadystatechange = function () {
+                            if (this.readyState == 4) {
+                                if (this.status == 200) {
+                                    var data = JSON.parse(xhr.responseText);
+                                    // Display the returned data in browser
+                                    var success_message = "The data point (query=" + data.query + ", label=" + data.label + ") has been added, thank you for your help!";
+                                    document.getElementById('raw_scores').innerHTML = success_message;
+                                } else {
+                                    console.error('Error: ' + this.status);
+                                }
+                            }
+                        };
 
-                        document.getElementById('raw_scores').innerHTML = success_message;
-                    });
+                        xhr.open('GET', PYTHON_SERVER_ADDRESS + 'api/add_data/?data_point=' + encodeURI(data_point));
+                        xhr.send();
                     };
 
                     submit_data_button.appendChild(document.createTextNode("Submit"));
@@ -132,17 +142,27 @@
                 }
 
                 // Add the contents of options[0] to #foo:
-                $("#submit_button").click(function () {
-                    var query_box_val = $("#query").val();
-                    $.get(PYTHON_SERVER_ADDRESS + "api/model/?query=" + encodeURI(query_box_val), function (data) {
-                        // Display the returned data in browser
-                        $("#best_prediction").text(makeScoreString(data.prediction));
+                document.getElementById('submit_button').onclick = function () {
+                    var query_box_val = document.getElementById('query').value;
+                    var xhr = new XMLHttpRequest();
+                    xhr.onreadystatechange = function () {
+                        if (this.readyState == 4) {
+                            if (this.status == 200) {
+                                var data = JSON.parse(xhr.responseText);
+                                console.log(data);
+                                // Display the returned data in browser
+                                document.getElementById("best_prediction").innerHTML = makeScoreString(data.prediction);
+                                document.getElementById('raw_scores').innerHTML = "";
+                                document.getElementById('raw_scores').appendChild(makeUL(data.query, data.raw_scores));
+                            } else {
+                                console.error('Error: ' + this.status);
+                            }
+                        }
+                    };
 
-
-                        document.getElementById('raw_scores').innerHTML = "";
-                        document.getElementById('raw_scores').appendChild(makeUL(data.query, data.raw_scores));
-                    });
-                });
+                    xhr.open('GET', PYTHON_SERVER_ADDRESS + "api/model/?query=" + encodeURI(query_box_val));
+                    xhr.send();
+                };
 
                 // Query on enter
                 var query_box = document.getElementById("query");
@@ -153,14 +173,14 @@
                         document.getElementById("submit_button").click();
                     }
                 });
-            });
+            };
         </script>
     </head>
 
     <body>
 
         <h2 id="title">WHO BOT Coronavirus</h2>
-	<input type="text" name="doc" id="query" value="What is coronavirus?">
+        <input type="text" name="doc" id="query" value="What is coronavirus?">
         <button type="submit" id="submit_button">Enter</button>
 
         <br />
