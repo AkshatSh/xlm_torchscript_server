@@ -12,6 +12,9 @@ from flask import Blueprint, Flask, abort, jsonify, render_template, request
 from flask_cors import CORS
 from flask_restful import Api
 
+# a lock for writing to the output
+# data file
+DATA_FILE_LOCK = threading.Lock()
 
 def get_args() -> argparse.ArgumentParser:
     """
@@ -94,8 +97,7 @@ def setup_app(app: Flask, args: object):
     def upload_data():
         data_point = get_key_from_data(request.args, "data_point")
         query, label = data_point.split(",")
-        lock = threading.Lock()
-        with lock:
+        with DATA_FILE_LOCK:
             with open(args.datafile, "a+") as csv_file:
                 csvwriter = csv.writer(csv_file, delimiter="\t")
                 csvwriter.writerow([query, label])
