@@ -1,166 +1,140 @@
 <!DOCTYPE html>
+<html lang="en">
   <head>
-    <title>WHO BOT Console</title>
-
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, shrink-to-fit=no"
+    />
+    <title>COVID-19 Chatbot</title>
+    <link
+      rel="stylesheet"
+      href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css"
+      integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh"
+      crossorigin="anonymous"
+    />
     <style>
-      .button {
-        margin-top: 20px;
-        height: 30px;
-        width: 100px;
-        font-size: 12pt;
+      * {
+        font-family: "Inter", sans-serif;
       }
-
-      #query {
-        height: 50px;
-        width: 700px;
-        font-size: 14pt;
-        padding-left: 10px;
+      #content {
+        max-width: 750px;
+        margin: 0 auto;
       }
-
-      #submit_button {
-        height: 50px;
-        width: 70px;
-        font-size: 14pt;
+      .card-title {
+        font-weight: 600;
       }
-
+      #cta,
+      #cta-success,
+      .table {
+        text-align: left;
+        color: #666;
+      }
+      #submit-data {
+        float: right;
+        position: relative;
+      }
+      .table-sm td,
+      .table-sm th {
+        padding: 0.3rem 2rem;
+      }
+      .selected-tr {
+        color: black;
+        background-color: #60b26a !important;
+      }
+      .btn-outline-success,
+      .btn-outline-success:active,
+      .btn-outline-success:visited {
+        background-color: #60b26a !important;
+        color: white;
+      }
+      .btn-outline-success:hover {
+        opacity: 0.9;
+      }
       .selection_area {
         padding: 20px;
-      }
-
-      input[type="radio"]:checked + label {
-        color: red;
       }
     </style>
 
     <script>
       var PYTHON_SERVER_ADDRESS = "{{ console_address }}";
+      var selected_intent = ",";
       window.onload = function () {
-        function makeScoreString(raw_scores) {
-          return raw_scores[0] + ": " + (raw_scores[1] * 100).toFixed(2) + "%";
+        function makePercentage(score) {
+          return (score * 100).toFixed(2) + "%";
         }
-        function makeUL(query, array) {
-          // Create the list element:
-          var prediction_container = document.createElement("div");
-          var list = document.createElement("ul");
 
-          var header = document.createElement("h4");
-          header.appendChild(
-            document.createTextNode("Help us gather more data!")
-          );
-          prediction_container.appendChild(header);
-          prediction_container.appendChild(
-            document.createTextNode(
-              "Select the correct prediction from below and submit to provide us more data to learn from!"
-            )
-          );
-
-          var selection_area = document.createElement("div");
-          selection_area.setAttribute("class", "selection_area");
-
-          for (var i = 0; i < array.length; i++) {
-            // Create the list item:
-            var item = document.createElement("li");
-            var intent_name = array[i][0];
-            var intent_score = array[i][1];
-
-            var choiceSelection = document.createElement("input");
-            choiceSelection.setAttribute("type", "radio");
-            choiceSelection.setAttribute("name", "choice");
-            choiceSelection.setAttribute("value", query + "," + intent_name);
-            choiceSelection.setAttribute("id", "choice_" + intent_name);
-
-            var choiceLabel = document.createElement("label");
-            choiceLabel.setAttribute("for", "choice_" + intent_name);
-            choiceLabel.appendChild(
-              document.createTextNode(makeScoreString(array[i]))
+        const selected = "selected-tr";
+        function selectTRow() {
+          if (this.classList.contains(selected)) {
+            this.classList.remove(selected);
+            document.querySelector("#submit-data").style.visibility = "hidden";
+            selected_intent = ",";
+          } else {
+            this.classList.add(selected);
+            document.querySelector("#submit-data").style.visibility = "visible";
+            selected_intent = this.lastChild.innerHTML;
+            const siblings = Array.prototype.filter.call(
+              this.parentNode.children,
+              (child) => {
+                return child !== this;
+              }
             );
+            for (let sibling of siblings) {
+              sibling.classList.remove(selected);
+            }
+          }
+        }
 
-            selection_area.appendChild(choiceSelection);
-            selection_area.appendChild(choiceLabel);
-            selection_area.appendChild(document.createElement("br"));
+        function makeTRow(name, score) {
+          var tr = document.createElement("tr");
+
+          var td_name = document.createElement("td");
+          var samp_name = document.createElement("samp");
+          samp_name.innerHTML = name;
+          td_name.appendChild(samp_name);
+          tr.appendChild(td_name);
+
+          var td_score = document.createElement("td");
+          td_score.setAttribute("class", "text-right");
+          var samp_score = document.createElement("samp");
+          samp_score.innerHTML = score;
+          td_score.appendChild(samp_score);
+          tr.appendChild(td_score);
+
+          var td_data = document.createElement("td");
+          td_data.innerHTML = "intent:" + name;
+          td_data.style.display = "none";
+          tr.appendChild(td_data);
+
+          tr.addEventListener("click", selectTRow);
+
+          return tr;
+        }
+
+        function makeTBody(query, array) {
+          // Create the table body
+          var tbody = document.createElement("tbody");
+
+          // Create the table rows
+          for (var i = 0; i < array.length; i++) {
+            tbody.appendChild(
+              makeTRow(array[i][0], makePercentage(array[i][1]))
+            );
           }
 
           // Add coronavirus_unsupported
-          var intent_name = "in:coronavirus_unsupported";
-          var choiceSelection = document.createElement("input");
-          choiceSelection.setAttribute("type", "radio");
-          choiceSelection.setAttribute("name", "choice");
-          choiceSelection.setAttribute("value", query + "," + intent_name);
-          choiceSelection.setAttribute("id", "choice_" + intent_name);
+          tbody.appendChild(makeTRow("coronavirus_unsupported", ""));
 
-          var choiceLabel = document.createElement("label");
-          choiceLabel.setAttribute("for", "choice_" + intent_name);
-          choiceLabel.appendChild(document.createTextNode(intent_name));
+          // Add out_of_domain
+          tbody.appendChild(makeTRow("out_of_domain", ""));
 
-          selection_area.appendChild(choiceSelection);
-          selection_area.appendChild(choiceLabel);
-          selection_area.appendChild(document.createElement("br"));
-
-          // Add OOD
-          var intent_name = "in:outOfDomain";
-          var choiceSelection = document.createElement("input");
-          choiceSelection.setAttribute("type", "radio");
-          choiceSelection.setAttribute("name", "choice");
-          choiceSelection.setAttribute("value", query + "," + intent_name);
-          choiceSelection.setAttribute("id", "choice_" + intent_name);
-
-          var choiceLabel = document.createElement("label");
-          choiceLabel.setAttribute("for", "choice_" + intent_name);
-          choiceLabel.appendChild(document.createTextNode(intent_name));
-
-          selection_area.appendChild(choiceSelection);
-          selection_area.appendChild(choiceLabel);
-          selection_area.appendChild(document.createElement("br"));
-
-          // add submit button
-
-          var submit_data_button = document.createElement("button");
-          submit_data_button.setAttribute("type", "submit");
-          submit_data_button.setAttribute("class", "button");
-          submit_data_button.onclick = function () {
-            var data_point = document.querySelector(
-              'input[name="choice"]:checked'
-            ).value;
-            var xhr = new XMLHttpRequest();
-            console.log(data_point);
-            xhr.onreadystatechange = function () {
-              if (this.readyState == 4) {
-                if (this.status == 200) {
-                  var data = JSON.parse(xhr.responseText);
-                  // Display the returned data in browser
-                  var success_message =
-                    "The data point (query=" +
-                    data.query +
-                    ", label=" +
-                    data.label +
-                    ") has been added, thank you for your help!";
-                  document.getElementById(
-                    "raw_scores"
-                  ).innerHTML = success_message;
-                } else {
-                  console.error("Error: " + this.status);
-                }
-              }
-            };
-
-            xhr.open(
-              "GET",
-              PYTHON_SERVER_ADDRESS +
-                "api/add_data/?data_point=" +
-                encodeURI(data_point)
-            );
-            xhr.send();
-          };
-
-          submit_data_button.appendChild(document.createTextNode("Submit"));
-
-          selection_area.appendChild(submit_data_button);
-          prediction_container.appendChild(selection_area);
-          return prediction_container;
+          return tbody;
         }
 
         // Add the contents of options[0] to #foo:
-        document.getElementById("submit_button").onclick = function () {
+        document.getElementById("submit_button").onclick = function (event) {
+          event.preventDefault();
           var query_box_val = document.getElementById("query").value;
           var xhr = new XMLHttpRequest();
           xhr.onreadystatechange = function () {
@@ -169,13 +143,20 @@
                 var data = JSON.parse(xhr.responseText);
                 console.log(data);
                 // Display the returned data in browser
+                document.getElementById("best-prediction-text").innerHTML =
+                  data.prediction[0];
                 document.getElementById(
-                  "best_prediction"
-                ).innerHTML = makeScoreString(data.prediction);
-                document.getElementById("raw_scores").innerHTML = "";
+                  "best-prediction-score"
+                ).innerHTML = makePercentage(data.prediction[1]);
+                document.querySelector("#raw-scores tbody").remove();
                 document
-                  .getElementById("raw_scores")
-                  .appendChild(makeUL(data.query, data.raw_scores));
+                  .querySelector("#raw-scores")
+                  .appendChild(makeTBody(data.query, data.raw_scores));
+                document.querySelector("#results").style.display = "block";
+                document.querySelector("#cta").style.display = "block";
+                document.querySelector("#cta-success").style.display = "none";
+                document.querySelector("#submit-data").style.visibility =
+                  "hidden";
               } else {
                 console.error("Error: " + this.status);
               }
@@ -200,20 +181,122 @@
             document.getElementById("submit_button").click();
           }
         });
+
+        // add submit data button
+        var submit_data_button = document.querySelector("#submit-data");
+        submit_data_button.onclick = function () {
+          var xhr = new XMLHttpRequest();
+          var data_point =
+            document.getElementById("query").value + "," + selected_intent;
+          console.log(data_point);
+          xhr.onreadystatechange = function () {
+            if (this.readyState == 4) {
+              if (this.status == 200) {
+                var data = JSON.parse(xhr.responseText);
+                // Display the returned data in browser
+                var success_message =
+                  "The data point <samp> (query=" +
+                  data.query +
+                  ", label=" +
+                  data.label +
+                  ") </samp>has been added to our database";
+                document.querySelector(
+                  "#success-message"
+                ).innerHTML = success_message;
+                document.querySelector("#cta").style.display = "none";
+                document.querySelector("#cta-success").style.display = "block";
+              } else {
+                console.error("Error: " + this.status);
+              }
+            }
+          };
+
+          xhr.open(
+            "GET",
+            PYTHON_SERVER_ADDRESS +
+              "api/add_data/?data_point=" +
+              encodeURI(data_point)
+          );
+          xhr.send();
+        };
       };
     </script>
   </head>
 
   <body>
-    <h2 id="title">WHO BOT Coronavirus</h2>
-    <input type="text" name="doc" id="query" value="What is coronavirus?" />
-    <button type="submit" id="submit_button">Enter</button>
-
-    <br />
-    <h3>Top Model Prediction</h3>
-    <div id="best_prediction"></div>
-
-    <br />
-    <div id="raw_scores"></div>
+    <main role="main" class="container text-center">
+      <div id="content">
+        <h1 class="mt-5">COVID-19 Chatbot</h1>
+        <form class="my-4" id="query-box">
+          <div class="input-group">
+            <input
+              type="text"
+              class="form-control form-control-lg"
+              id="query"
+              value="What is coronavirus?"
+            />
+            <div class="input-group-append">
+              <button
+                class="btn btn-outline-secondary"
+                type="submit"
+                id="submit_button"
+              >
+                Analyze
+              </button>
+            </div>
+          </div>
+        </form>
+        <div id="results" style="display: none;">
+          <div class="card bg-light mb-5">
+            <div class="card-header">Top Model Prediction</div>
+            <div class="card-body">
+              <h5 class="card-title">
+                <samp id="best-prediction-text"></samp>
+              </h5>
+              <p class="card-text">
+                <samp id="best-prediction-score"></samp>
+              </p>
+            </div>
+          </div>
+          <div id="cta">
+            <div class="container">
+              <div class="row">
+                <div class="col-11">
+                  <h5>Help us gather more data!</h5>
+                  <p>
+                    Select the correct prediction below and submit to provide us
+                    data to learn from!
+                  </p>
+                </div>
+                <div class="col-1">
+                  <button
+                    type="submit"
+                    id="submit-data"
+                    class="btn btn-outline-success"
+                    style="visibility: hidden;"
+                  >
+                    Submit
+                  </button>
+                </div>
+              </div>
+            </div>
+            <table class="table table-sm table-hover" id="raw-scores">
+              <thead>
+                <tr>
+                  <th scope="col" class="col">Intent</th>
+                  <th scope="col" class="col">Confidence</th>
+                  <th style="display: none;"></th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+          <div id="cta-success" style="display: none;">
+            <h5>Thank you for contributing!</h5>
+            <p id="success-message"></p>
+          </div>
+        </div>
+      </div>
+    </main>
   </body>
-</!DOCTYPE>
+</html>
