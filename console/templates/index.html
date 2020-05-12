@@ -63,6 +63,7 @@
     <script>
       var PYTHON_SERVER_ADDRESS = "{{ console_address }}";
       var selected_intent = ",";
+      var touchEvent = "ontouchstart" in window ? "touchstart" : "click";
       window.onload = function () {
         function makePercentage(score) {
           return (score * 100).toFixed(2) + "%";
@@ -111,7 +112,7 @@
           td_data.style.display = "none";
           tr.appendChild(td_data);
 
-          tr.addEventListener("click", selectTRow);
+          tr.addEventListener(touchEvent, selectTRow);
           tr.style.cursor = "pointer"; // iOS bug
 
           return tr;
@@ -138,44 +139,46 @@
         }
 
         // Add the contents of options[0] to #foo:
-        document.getElementById("submit_button").onclick = function (event) {
-          event.preventDefault();
-          var query_box_val = document.getElementById("query").value;
-          var xhr = new XMLHttpRequest();
-          xhr.onreadystatechange = function () {
-            if (this.readyState == 4) {
-              if (this.status == 200) {
-                var data = JSON.parse(xhr.responseText);
-                console.log(data);
-                // Display the returned data in browser
-                document.getElementById("best-prediction-text").innerHTML =
-                  data.prediction[0];
-                document.getElementById(
-                  "best-prediction-score"
-                ).innerHTML = makePercentage(data.prediction[1]);
-                document.querySelector("#raw-scores tbody").remove();
-                document
-                  .querySelector("#raw-scores")
-                  .appendChild(makeTBody(data.query, data.raw_scores));
-                document.querySelector("#results").style.display = "block";
-                document.querySelector("#cta").style.display = "block";
-                document.querySelector("#cta-success").style.display = "none";
-                document.querySelector("#submit-data").style.visibility =
-                  "hidden";
-              } else {
-                console.error("Error: " + this.status);
+        document
+          .getElementById("submit_button")
+          .addEventListener(touchEvent, function (event) {
+            event.preventDefault();
+            var query_box_val = document.getElementById("query").value;
+            var xhr = new XMLHttpRequest();
+            xhr.onreadystatechange = function () {
+              if (this.readyState == 4) {
+                if (this.status == 200) {
+                  var data = JSON.parse(xhr.responseText);
+                  console.log(data);
+                  // Display the returned data in browser
+                  document.getElementById("best-prediction-text").innerHTML =
+                    data.prediction[0];
+                  document.getElementById(
+                    "best-prediction-score"
+                  ).innerHTML = makePercentage(data.prediction[1]);
+                  document.querySelector("#raw-scores tbody").remove();
+                  document
+                    .querySelector("#raw-scores")
+                    .appendChild(makeTBody(data.query, data.raw_scores));
+                  document.querySelector("#results").style.display = "block";
+                  document.querySelector("#cta").style.display = "block";
+                  document.querySelector("#cta-success").style.display = "none";
+                  document.querySelector("#submit-data").style.visibility =
+                    "hidden";
+                } else {
+                  console.error("Error: " + this.status);
+                }
               }
-            }
-          };
+            };
 
-          xhr.open(
-            "GET",
-            PYTHON_SERVER_ADDRESS +
-              "api/model/?query=" +
-              encodeURI(query_box_val)
-          );
-          xhr.send();
-        };
+            xhr.open(
+              "GET",
+              PYTHON_SERVER_ADDRESS +
+                "api/model/?query=" +
+                encodeURI(query_box_val)
+            );
+            xhr.send();
+          });
 
         // Query on enter
         var query_box = document.getElementById("query");
@@ -189,7 +192,7 @@
 
         // add submit data button
         var submit_data_button = document.querySelector("#submit-data");
-        submit_data_button.onclick = function () {
+        submit_data_button.addEventListener(touchEvent, function () {
           var xhr = new XMLHttpRequest();
           var data_point =
             document.getElementById("query").value + "," + selected_intent;
@@ -223,7 +226,7 @@
               encodeURI(data_point)
           );
           xhr.send();
-        };
+        });
       };
     </script>
   </head>
