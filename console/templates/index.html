@@ -30,9 +30,13 @@
         text-align: left;
         color: #666;
       }
+      #submit_button {
+        cursor: pointer; /* iOS bug */
+      }
       #submit-data {
         float: right;
         position: relative;
+        cursor: pointer; /* iOS bug */
       }
       .table-sm td,
       .table-sm th {
@@ -108,6 +112,7 @@
           tr.appendChild(td_data);
 
           tr.addEventListener("click", selectTRow);
+          tr.style.cursor = "pointer"; // iOS bug
 
           return tr;
         }
