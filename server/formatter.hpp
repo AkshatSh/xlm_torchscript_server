@@ -11,9 +11,9 @@ using json = nlohmann::json;
 
 class Formatter {
  public:
-  string formatRequest(const string& requestBody) {
+  const string& formatRequest(const string& requestBody) {
     const json jsonRequest = json::parse(requestBody);
-    
+
     string text;
     try {
       text = jsonRequest.at(mTextParam);
@@ -31,7 +31,7 @@ class Formatter {
     return normalizedText;
   }
 
-  string formatResponse(const map<string, double>& scores, const string& text) {
+  const string& formatResponse(const map<string, double>& scores, const string& text) {
     // Exponentiate
     map<string, double> expScores;
     transform(scores.begin(), scores.end(), inserter(expScores, expScores.begin()),
@@ -86,7 +86,7 @@ class Formatter {
     return v;
   }
 
-  string stripPrefixWord(const string& text, const string& prefix) {
+  const string& stripPrefixWord(const string& text, const string& prefix) {
     if (text.length() >= prefix.length()) {
       auto res = std::mismatch(prefix.begin(), prefix.end(), text.begin());
       if (res.first == prefix.end()) {
@@ -96,7 +96,7 @@ class Formatter {
     return text;
   }
 
-  string stripPrefixChars(const string& text, const set<char>& prefixes) {
+  const string& stripPrefixChars(const string& text, const set<char>& prefixes) {
     int textLength = text.length();  // cast to int to avoid unsigned size_t underflow on subtraction from 0
     int startIdx = 0;
     while (startIdx < textLength) {
@@ -108,7 +108,7 @@ class Formatter {
     return text.substr(startIdx);
   }
 
-  string stripSuffixWord(const string& text, const string& suffix) {
+  const string& stripSuffixWord(const string& text, const string& suffix) {
     if (text.length() >= suffix.length()) {
       if (0 == text.compare(text.length() - suffix.length(), suffix.length(), suffix)) {
         return text.substr(0, text.length() - suffix.length());
@@ -117,7 +117,7 @@ class Formatter {
     return text;
   }
 
-  string stripSuffixChars(const string& text, const set<char>& suffixes) {
+  const string& stripSuffixChars(const string& text, const set<char>& suffixes) {
     int endIdx = text.length();  // cast to int to avoid unsigned size_t underflow on subtraction from 0
     while (endIdx > 0) {
       if (suffixes.find(text.at(endIdx - 1)) == suffixes.end()) { // character is not in suffixes set
@@ -158,7 +158,7 @@ class Formatter {
     // Composite
     assert (
       stripSuffixChars(
-        stripPrefixChars(" what is foo.?!?? ", mPrefixCharsToStrip), 
+        stripPrefixChars(" what is foo.?!?? ", mPrefixCharsToStrip),
         mSuffixCharsToStrip
       ) == "what is foo"
     );
