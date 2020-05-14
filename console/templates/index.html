@@ -18,7 +18,7 @@
         font-family: "Inter", sans-serif;
       }
       #content {
-        max-width: 750px;
+        max-width: 768px;
         margin: 0 auto;
       }
       .card-title {
@@ -34,13 +34,19 @@
         cursor: pointer; /* iOS bug */
       }
       #submit-data {
-        float: right;
-        position: relative;
         cursor: pointer; /* iOS bug */
       }
       .table-sm td,
       .table-sm th {
-        padding: 0.3rem 2rem;
+        padding: 0.3rem 0.3rem;
+        font-size: 0.8rem;
+      }
+      @media (min-width: 768px) {
+        .table-sm td,
+        .table-sm th {
+          padding: 0.3rem 2rem;
+          font-size: 1rem;
+        }
       }
       .selected-tr {
         color: black;
@@ -73,11 +79,11 @@
         function selectTRow() {
           if (this.classList.contains(selected)) {
             this.classList.remove(selected);
-            document.querySelector("#submit-data").style.visibility = "hidden";
+            document.querySelector("#submit-data").style.display = "none";
             selected_intent = ",";
           } else {
             this.classList.add(selected);
-            document.querySelector("#submit-data").style.visibility = "visible";
+            document.querySelector("#submit-data").style.display = "block";
             selected_intent = this.lastChild.innerHTML;
             const siblings = Array.prototype.filter.call(
               this.parentNode.children,
@@ -163,8 +169,7 @@
                   document.querySelector("#results").style.display = "block";
                   document.querySelector("#cta").style.display = "block";
                   document.querySelector("#cta-success").style.display = "none";
-                  document.querySelector("#submit-data").style.visibility =
-                    "hidden";
+                  document.querySelector("#submit-data").style.display = "none";
                 } else {
                   console.error("Error: " + this.status);
                 }
@@ -255,7 +260,7 @@
           </div>
         </form>
         <div id="results" style="display: none;">
-          <div class="card bg-light mb-5">
+          <div class="card bg-light mb-4">
             <div class="card-header">Top Model Prediction</div>
             <div class="card-body">
               <h5 class="card-title">
@@ -267,26 +272,20 @@
             </div>
           </div>
           <div id="cta">
-            <div class="container">
-              <div class="row">
-                <div class="col-11">
-                  <h5>Help us gather more data!</h5>
-                  <p>
-                    Select the correct prediction below and submit to provide us
-                    data to learn from!
-                  </p>
-                </div>
-                <div class="col-1">
-                  <button
-                    type="submit"
-                    id="submit-data"
-                    class="btn btn-outline-success"
-                    style="visibility: hidden;"
-                  >
-                    Submit
-                  </button>
-                </div>
-              </div>
+            <div class="container mb-3">
+              <h5>Help us gather more data!</h5>
+              <p>
+                Select the correct prediction below and submit to provide us
+                data to learn from!
+              </p>
+              <button
+                type="submit"
+                id="submit-data"
+                class="btn btn-outline-success"
+                style="display: none;"
+              >
+                Submit
+              </button>
             </div>
             <table class="table table-sm table-hover" id="raw-scores">
               <thead>
