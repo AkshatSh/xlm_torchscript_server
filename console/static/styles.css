@@ -1,0 +1,61 @@
+* {
+    font-family: "Inter", sans-serif;
+}
+
+#content {
+    max-width: 768px;
+    margin: 0 auto;
+}
+
+.card-title {
+    font-weight: 600;
+}
+
+#cta,
+#cta-success,
+.table {
+    text-align: left;
+    color: #666;
+}
+
+#submit_button {
+    cursor: pointer; /* iOS bug */
+}
+
+#submit-data {
+    cursor: pointer; /* iOS bug */
+}
+
+.table-sm td,
+.table-sm th {
+    padding: 0.3rem 0.3rem;
+    font-size: 0.8rem;
+}
+
+@media (min-width: 768px) {
+    .table-sm td,
+    .table-sm th {
+        padding: 0.3rem 2rem;
+        font-size: 1rem;
+    }
+}
+
+.selected-tr {
+    color: black;
+    background-color: #60b26a !important;
+}
+
+.btn-outline-success,
+.btn-outline-success:active,
+.btn-outline-success:visited {
+    background-color: #60b26a !important;
+    color: white;
+}
+
+.btn-outline-success:hover {
+    opacity: 0.9;
+}
+
+.selection_area {
+    padding: 20px;
+}

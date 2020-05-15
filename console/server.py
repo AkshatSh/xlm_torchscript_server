@@ -96,13 +96,19 @@ def setup_app(app: Flask, args: object):
     @app.route("/api/add_data/", methods=["GET"])
     def upload_data():
         data_point = get_key_from_data(request.args, "data_point")
-        query, label = data_point.split(",")
+        data_point_tokens: List[str] = data_point.split(",")
+        language = None
+        if len(data_point_tokens) == 2:
+            query, label = data_point_tokens
+        else:
+            query, label, language = data_point_tokens
+
         with DATA_FILE_LOCK:
             with open(args.datafile, "a+") as csv_file:
                 csvwriter = csv.writer(csv_file, delimiter="\t")
-                csvwriter.writerow([query, label])
+                csvwriter.writerow([query, label, language])
 
-        return jsonify({"query": query, "label": label}), 200
+        return jsonify({"query": query, "label": label, "language": language}), 200
 
     @app.route("/", methods=["GET"])
     def root():

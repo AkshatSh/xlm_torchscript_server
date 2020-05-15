@@ -13,59 +13,8 @@
       integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh"
       crossorigin="anonymous"
     />
-    <style>
-      * {
-        font-family: "Inter", sans-serif;
-      }
-      #content {
-        max-width: 768px;
-        margin: 0 auto;
-      }
-      .card-title {
-        font-weight: 600;
-      }
-      #cta,
-      #cta-success,
-      .table {
-        text-align: left;
-        color: #666;
-      }
-      #submit_button {
-        cursor: pointer; /* iOS bug */
-      }
-      #submit-data {
-        cursor: pointer; /* iOS bug */
-      }
-      .table-sm td,
-      .table-sm th {
-        padding: 0.3rem 0.3rem;
-        font-size: 0.8rem;
-      }
-      @media (min-width: 768px) {
-        .table-sm td,
-        .table-sm th {
-          padding: 0.3rem 2rem;
-          font-size: 1rem;
-        }
-      }
-      .selected-tr {
-        color: black;
-        background-color: #60b26a !important;
-      }
-      .btn-outline-success,
-      .btn-outline-success:active,
-      .btn-outline-success:visited {
-        background-color: #60b26a !important;
-        color: white;
-      }
-      .btn-outline-success:hover {
-        opacity: 0.9;
-      }
-      .selection_area {
-        padding: 20px;
-      }
-    </style>
-
+    <link rel="stylesheet" type="text/css" href="{{url_for('static', filename='styles.css')}}">
+    <script src="{{url_for('static', filename='languages.js')}}"></script>
     <script>
       var PYTHON_SERVER_ADDRESS = "{{ console_address }}";
       var selected_intent = ",";
@@ -155,7 +104,6 @@
               if (this.readyState == 4) {
                 if (this.status == 200) {
                   var data = JSON.parse(xhr.responseText);
-                  console.log(data);
                   // Display the returned data in browser
                   document.getElementById("best-prediction-text").innerHTML =
                     data.prediction[0];
@@ -200,8 +148,7 @@
         submit_data_button.addEventListener(touchEvent, function () {
           var xhr = new XMLHttpRequest();
           var data_point =
-            document.getElementById("query").value + "," + selected_intent;
-          console.log(data_point);
+            document.getElementById("query").value + "," + selected_intent + "," + document.getElementById("language_selector").value;
           xhr.onreadystatechange = function () {
             if (this.readyState == 4) {
               if (this.status == 200) {
@@ -212,6 +159,8 @@
                   data.query +
                   ", label=" +
                   data.label +
+                  ", language=" +
+                  data.language +
                   ") </samp>has been added to our database";
                 document.querySelector(
                   "#success-message"
@@ -232,6 +181,22 @@
           );
           xhr.send();
         });
+
+        // create the language drop down
+        function createLanguageDropDown() {
+          for (var iso_code in ISO_LANGUAGES) {
+            if (ISO_LANGUAGES.hasOwnProperty(iso_code)) {
+              var option = document.createElement("option");
+              option.value = iso_code;
+              option.innerText = ISO_LANGUAGES[iso_code].name;
+              document.getElementById("language_selector").append(option);
+            }
+          }
+
+          document.getElementById("language_selector").value = "en";
+        }
+
+        createLanguageDropDown();
       };
     </script>
   </head>
@@ -287,6 +252,7 @@
                 Submit
               </button>
             </div>
+            <div class="container mb-3">Language: <select class="form-control" id="language_selector"></select></div>
             <table class="table table-sm table-hover" id="raw-scores">
               <thead>
                 <tr>
