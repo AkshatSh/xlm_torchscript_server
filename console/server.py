@@ -4,7 +4,7 @@ import json
 import logging
 import threading
 import urllib
-from typing import Any, Dict, Tuple
+from typing import Any, Dict, Tuple, List
 
 import flask
 import requests
