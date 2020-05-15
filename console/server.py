@@ -96,7 +96,7 @@ def setup_app(app: Flask, args: object):
     @app.route("/api/add_data/", methods=["GET"])
     def upload_data():
         data_point = get_key_from_data(request.args, "data_point")
-        data_point_tokens: List[str] = data_point.split(",")
+        data_point_tokens = data_point.split(",")
         language = None
         if len(data_point_tokens) == 2:
             query, label = data_point_tokens
