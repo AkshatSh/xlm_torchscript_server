@@ -1,17 +1,18 @@
 
+#include <glog/logging.h>
+
 #include <cassert>
+#include <nlohmann/json.hpp>
 #include <set>
 #include <string>
 #include <vector>
-#include <nlohmann/json.hpp>
-#include <glog/logging.h>
 
 using namespace std;
 using json = nlohmann::json;
 
 class Formatter {
  public:
-  const string& formatRequest(const string& requestBody) {
+  string formatRequest(const string& requestBody) {
     const json jsonRequest = json::parse(requestBody);
 
     string text;
@@ -31,7 +32,7 @@ class Formatter {
     return normalizedText;
   }
 
-  const string& formatResponse(const map<string, double>& scores, const string& text) {
+  string formatResponse(const map<string, double>& scores, const string& text) {
     // Exponentiate
     map<string, double> expScores;
     transform(scores.begin(), scores.end(), inserter(expScores, expScores.begin()),
@@ -86,7 +87,7 @@ class Formatter {
     return v;
   }
 
-  const string& stripPrefixWord(const string& text, const string& prefix) {
+  string stripPrefixWord(const string& text, const string& prefix) {
     if (text.length() >= prefix.length()) {
       auto res = std::mismatch(prefix.begin(), prefix.end(), text.begin());
       if (res.first == prefix.end()) {
@@ -96,11 +97,11 @@ class Formatter {
     return text;
   }
 
-  const string& stripPrefixChars(const string& text, const set<char>& prefixes) {
+  string stripPrefixChars(const string& text, const set<char>& prefixes) {
     int textLength = text.length();  // cast to int to avoid unsigned size_t underflow on subtraction from 0
     int startIdx = 0;
     while (startIdx < textLength) {
-      if (prefixes.find(text.at(startIdx)) == prefixes.end()) { // character is not in prefixes set
+      if (prefixes.find(text.at(startIdx)) == prefixes.end()) {  // character is not in prefixes set
         break;
       }
       startIdx++;
@@ -108,7 +109,7 @@ class Formatter {
     return text.substr(startIdx);
   }
 
-  const string& stripSuffixWord(const string& text, const string& suffix) {
+  string stripSuffixWord(const string& text, const string& suffix) {
     if (text.length() >= suffix.length()) {
       if (0 == text.compare(text.length() - suffix.length(), suffix.length(), suffix)) {
         return text.substr(0, text.length() - suffix.length());
@@ -117,10 +118,10 @@ class Formatter {
     return text;
   }
 
-  const string& stripSuffixChars(const string& text, const set<char>& suffixes) {
+  string stripSuffixChars(const string& text, const set<char>& suffixes) {
     int endIdx = text.length();  // cast to int to avoid unsigned size_t underflow on subtraction from 0
     while (endIdx > 0) {
-      if (suffixes.find(text.at(endIdx - 1)) == suffixes.end()) { // character is not in suffixes set
+      if (suffixes.find(text.at(endIdx - 1)) == suffixes.end()) {  // character is not in suffixes set
         break;
       }
       endIdx--;
@@ -156,12 +157,10 @@ class Formatter {
     assert(stripSuffixChars("", {' ', '?', '!'}) == "");
 
     // Composite
-    assert (
-      stripSuffixChars(
-        stripPrefixChars(" what is foo.?!?? ", mPrefixCharsToStrip),
-        mSuffixCharsToStrip
-      ) == "what is foo"
-    );
+    assert(
+        stripSuffixChars(
+            stripPrefixChars(" what is foo.?!?? ", mPrefixCharsToStrip),
+            mSuffixCharsToStrip) == "what is foo");
 
     LOG(INFO) << "All formatter tests passed";
   }
